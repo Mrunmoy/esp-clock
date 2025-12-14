@@ -62,6 +62,20 @@ idf.py -p /dev/ttyUSB0 flash monitor
 
 ### Building Locally
 
+#### Prerequisites
+
+```bash
+# ESP-IDF is included as a submodule, but you need Python 3.9+
+python3 --version  # Should be 3.9 or newer
+
+# Install required system packages (Ubuntu/Debian)
+sudo apt-get install git wget flex bison gperf python3 python3-pip \
+    python3-venv cmake ninja-build ccache libffi-dev libssl-dev \
+    dfu-util libusb-1.0-0
+```
+
+#### Build Steps
+
 1. Clone the repository with submodules:
 ```bash
 git clone <your-repo-url> esp-clock
@@ -69,33 +83,54 @@ cd esp-clock
 git submodule update --init --recursive
 ```
 
-2. Set up the environment:
+2. Set up ESP-IDF environment:
 ```bash
+# This script:
+# - Sets IDF_PATH to third_party/esp-idf
+# - Installs ESP-IDF tools to third_party/esp-idf-tools (first time)
+# - Exports ESP-IDF environment variables
 source ./env.sh
 ```
 
-This will:
-- Set IDF_PATH to the local ESP-IDF submodule
-- Install ESP-IDF tools (first time only)
-- Export ESP-IDF environment variables
+3. Set target to ESP32-S3 (first time only):
+```bash
+idf.py set-target esp32s3
+```
 
-3. Configure the project (optional):
+4. Configure the project (optional but recommended):
 ```bash
 idf.py menuconfig
 ```
 
-Navigate to "ESP Clock Configuration" to set default values.
+Navigate to "ESP Clock Configuration" to set:
+- OpenWeather API key (required for weather display)
+- City and country code
+- Timezone
+- NTP server
+- Default WiFi AP credentials
 
-4. Build the project:
+5. Build the project:
 ```bash
+# Using the build script (recommended - automatically sets target)
 ./build.sh
-# OR
+
+# Or use idf.py directly
 idf.py build
+
+# For other targets
+./build.sh esp32    # ESP32
+./build.sh esp32c3  # ESP32-C3
 ```
 
-5. Flash to your ESP32-S3:
+6. Flash to your ESP32-S3:
 ```bash
-idf.py -p /dev/ttyUSB0 flash monitor
+# Replace /dev/ttyACM0 with your device's serial port
+# Common ports: /dev/ttyUSB0, /dev/ttyACM0, /dev/cu.usbserial-*
+
+# Flash and monitor
+idf.py -p /dev/ttyACM0 flash monitor
+
+# Press Ctrl+] to exit monitor
 ```
 
 ## Configuration
