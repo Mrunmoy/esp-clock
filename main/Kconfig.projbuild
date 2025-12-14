@@ -1,0 +1,58 @@
+menu "ESP Clock Configuration"
+
+	config ESP_WIFI_SSID
+		string "WiFi SSID"
+		default "ESP_CLOCK_AP"
+		help
+			SSID (network name) for the ESP to create (AP mode) or connect to (STA mode).
+
+	config ESP_WIFI_PASSWORD
+		string "WiFi Password"
+		default "esp-clock-2024"
+		help
+			WiFi password (WPA or WPA2) for the AP or STA connection.
+
+	config ESP_WIFI_CHANNEL
+		int "WiFi Channel"
+		range 1 13
+		default 1
+		help
+			WiFi channel (network channel) for the ESP soft-AP.
+
+	config ESP_MAX_STA_CONN
+		int "Maximum STA connections"
+		default 4
+		help
+			Maximum number of stations able to connect to the AP.
+
+	config OPENWEATHER_API_KEY
+		string "OpenWeather API Key"
+		default ""
+		help
+			API key for OpenWeatherMap.org for fetching weather data.
+
+	config WEATHER_CITY
+		string "City for Weather"
+		default "Sydney"
+		help
+			City name for weather information.
+
+	config WEATHER_COUNTRY_CODE
+		string "Country Code"
+		default "AU"
+		help
+			Two-letter country code (e.g., AU for Australia, US for USA).
+
+	config TIMEZONE
+		string "Timezone"
+		default "AEST-10AEDT,M10.1.0,M4.1.0/3"
+		help
+			POSIX timezone string (e.g., AEST-10AEDT,M10.1.0,M4.1.0/3 for Sydney).
+
+	config NTP_SERVER
+		string "NTP Server"
+		default "pool.ntp.org"
+		help
+			NTP server for time synchronization.
+
+endmenu

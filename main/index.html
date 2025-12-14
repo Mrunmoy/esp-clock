@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP Clock Configuration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .checkbox-group {
+            margin-bottom: 12px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-group label:hover {
+            background: #f0f0f0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .note {
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⏰ ESP Clock</h1>
+        <p class="subtitle">Configure your smart LED matrix display</p>
+
+        <div class="section">
+            <h2>Display Modes</h2>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="showClock" checked>
+                    <span>📅 Show Clock</span>
+                </label>
+            </div>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="showWeather">
+                    <span>🌤️ Show Weather</span>
+                </label>
+            </div>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="showStarWars">
+                    <span>⚔️ Star Wars Quotes</span>
+                </label>
+            </div>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="showLOTR">
+                    <span>🧙 Lord of the Rings Quotes</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Custom Text</h2>
+            <div class="input-group">
+                <label for="customText">Scrolling Text (optional)</label>
+                <textarea id="customText" placeholder="Enter your custom message..."></textarea>
+            </div>
+        </div>
+
+        <button class="btn" onclick="saveConfig()">💾 Save Configuration</button>
+
+        <div id="status" class="status"></div>
+
+        <div class="section" style="margin-top: 30px;">
+            <h2>WiFi Configuration</h2>
+            <div class="input-group">
+                <label for="wifiSSID">WiFi Network</label>
+                <input type="text" id="wifiSSID" placeholder="Enter WiFi SSID">
+            </div>
+            <div class="input-group">
+                <label for="wifiPassword">WiFi Password</label>
+                <input type="password" id="wifiPassword" placeholder="Enter WiFi password">
+            </div>
+            <button class="btn btn-secondary" onclick="saveWiFi()">🔄 Update WiFi & Reboot</button>
+            <div class="note">
+                ⚠️ Changing WiFi will reboot the device. Make sure the credentials are correct!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load current configuration on page load
+        window.onload = function() {
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('showClock').checked = data.showClock;
+                    document.getElementById('showWeather').checked = data.showWeather;
+                    document.getElementById('showStarWars').checked = data.showStarWars;
+                    document.getElementById('showLOTR').checked = data.showLOTR;
+                    document.getElementById('customText').value = data.customText || '';
+                })
+                .catch(err => console.error('Failed to load config:', err));
+        };
+
+        function saveConfig() {
+            const config = {
+                showClock: document.getElementById('showClock').checked,
+                showWeather: document.getElementById('showWeather').checked,
+                showStarWars: document.getElementById('showStarWars').checked,
+                showLOTR: document.getElementById('showLOTR').checked,
+                customText: document.getElementById('customText').value
+            };
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+            .then(response => {
+                if (response.ok) {
+                    showStatus('Configuration saved successfully!', 'success');
+                } else {
+                    showStatus('Failed to save configuration', 'error');
+                }
+            })
+            .catch(err => {
+                showStatus('Error: ' + err.message, 'error');
+            });
+        }
+
+        function saveWiFi() {
+            const ssid = document.getElementById('wifiSSID').value;
+            const password = document.getElementById('wifiPassword').value;
+
+            if (!ssid) {
+                showStatus('Please enter WiFi SSID', 'error');
+                return;
+            }
+
+            if (confirm('This will reboot the device. Continue?')) {
+                const wifi = { ssid, password };
+
+                fetch('/api/wifi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(wifi)
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showStatus('WiFi updated! Device rebooting...', 'success');
+                    } else {
+                        showStatus('Failed to update WiFi', 'error');
+                    }
+                })
+                .catch(err => {
+                    showStatus('Error: ' + err.message, 'error');
+                });
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+
+            setTimeout(() => {
+                statusEl.className = 'status';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
