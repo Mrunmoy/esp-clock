@@ -3,6 +3,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "driver/gpio.h"
 
 #include "WifiManager.hpp"
 #include "WebServer.hpp"

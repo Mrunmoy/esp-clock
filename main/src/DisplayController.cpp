@@ -7,7 +7,7 @@
 
 static const char* TAG = "DisplayController";
 
-#define WEATHER_UPDATE_INTERVAL_MS (10 * 60 * 1000)  // 10 minutes
+#define WEATHER_UPDATE_INTERVAL_MS (60 * 60 * 1000)  // 1 hour
 #define MODE_SWITCH_INTERVAL_MS (10 * 1000)  // 10 seconds per mode
 
 DisplayController::DisplayController(DisplayManager* display)

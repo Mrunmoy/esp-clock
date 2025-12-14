@@ -26,5 +26,5 @@ idf_component_register(
         esp_event
         esp_timer
         json
-        esp_sntp
+        lwip
 )
