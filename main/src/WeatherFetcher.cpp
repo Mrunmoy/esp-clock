@@ -4,24 +4,25 @@
 #include <cJSON.h>
 #include <cstring>
 
-static const char* TAG = "WeatherFetcher";
+namespace
+{
+	const char* TAG = "WeatherFetcher";
+	const int MAX_HTTP_OUTPUT_BUFFER = 2048;
+	char httpOutputBuffer[MAX_HTTP_OUTPUT_BUFFER];
+	int httpOutputLen = 0;
+}
 
-#define MAX_HTTP_OUTPUT_BUFFER 2048
-
-static char http_output_buffer[MAX_HTTP_OUTPUT_BUFFER];
-static int http_output_len = 0;
-
-esp_err_t http_event_handler(esp_http_client_event_t *evt)
+esp_err_t httpEventHandler(esp_http_client_event_t *evt)
 {
 	switch(evt->event_id)
 	{
 	case HTTP_EVENT_ON_DATA:
 		if (!esp_http_client_is_chunked_response(evt->client))
 		{
-			if (http_output_len + evt->data_len < MAX_HTTP_OUTPUT_BUFFER)
+			if (httpOutputLen + evt->data_len < MAX_HTTP_OUTPUT_BUFFER)
 			{
-				memcpy(http_output_buffer + http_output_len, evt->data, evt->data_len);
-				http_output_len += evt->data_len;
+				memcpy(httpOutputBuffer + httpOutputLen, evt->data, evt->data_len);
+				httpOutputLen += evt->data_len;
 			}
 		}
 		break;
@@ -35,8 +36,8 @@ bool WeatherFetcher::fetchWeather(WeatherData& data)
 {
 	data.valid = false;
 
-	const char* api_key = CONFIG_OPENWEATHER_API_KEY;
-	if (strlen(api_key) == 0)
+	const char* apiKey = CONFIG_OPENWEATHER_API_KEY;
+	if (strlen(apiKey) == 0)
 	{
 		ESP_LOGW(TAG, "OpenWeather API key not configured");
 		return false;
@@ -45,14 +46,14 @@ bool WeatherFetcher::fetchWeather(WeatherData& data)
 	char url[256];
 	snprintf(url, sizeof(url),
 	         "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&appid=%s&units=metric",
-	         CONFIG_WEATHER_CITY, CONFIG_WEATHER_COUNTRY_CODE, api_key);
+	         CONFIG_WEATHER_CITY, CONFIG_WEATHER_COUNTRY_CODE, apiKey);
 
-	http_output_len = 0;
-	memset(http_output_buffer, 0, sizeof(http_output_buffer));
+	httpOutputLen = 0;
+	memset(httpOutputBuffer, 0, sizeof(httpOutputBuffer));
 
 	esp_http_client_config_t config = {};
 	config.url = url;
-	config.event_handler = http_event_handler;
+	config.event_handler = httpEventHandler;
 	config.timeout_ms = 5000;
 
 	esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -60,17 +61,17 @@ bool WeatherFetcher::fetchWeather(WeatherData& data)
 
 	if (err == ESP_OK)
 	{
-		int status_code = esp_http_client_get_status_code(client);
-		if (status_code == 200)
+		int statusCode = esp_http_client_get_status_code(client);
+		if (statusCode == 200)
 		{
-			http_output_buffer[http_output_len] = '\0';
-			bool parsed = parseWeatherJSON(http_output_buffer, data);
+			httpOutputBuffer[httpOutputLen] = '\0';
+			bool parsed = parseWeatherJSON(httpOutputBuffer, data);
 			esp_http_client_cleanup(client);
 			return parsed;
 		}
 		else
 		{
-			ESP_LOGW(TAG, "HTTP GET failed, status code: %d", status_code);
+			ESP_LOGW(TAG, "HTTP GET failed, status code: %d", statusCode);
 		}
 	}
 	else
@@ -106,11 +107,11 @@ bool WeatherFetcher::parseWeatherJSON(const char* json, WeatherData& data)
 	cJSON* weather = cJSON_GetObjectItem(root, "weather");
 	if (weather && cJSON_IsArray(weather))
 	{
-		cJSON* weather_item = cJSON_GetArrayItem(weather, 0);
-		if (weather_item)
+		cJSON* weatherItem = cJSON_GetArrayItem(weather, 0);
+		if (weatherItem)
 		{
-			cJSON* desc = cJSON_GetObjectItem(weather_item, "description");
-			cJSON* icon = cJSON_GetObjectItem(weather_item, "icon");
+			cJSON* desc = cJSON_GetObjectItem(weatherItem, "description");
+			cJSON* icon = cJSON_GetObjectItem(weatherItem, "icon");
 
 			if (desc && cJSON_IsString(desc))
 			{

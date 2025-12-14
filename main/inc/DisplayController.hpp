@@ -15,13 +15,13 @@ public:
 private:
 	void displayClock();
 	void displayWeather();
-	void displayQuote(bool star_wars);
+	void displayQuote(bool starWars);
 	void displayCustomText();
 
-	DisplayManager* display_;
-	DisplayConfig config_;
-	WeatherData weather_data_;
-	uint32_t last_weather_update_;
-	int current_mode_;
-	uint32_t last_mode_switch_;
+	DisplayManager* m_display;
+	DisplayConfig m_config;
+	WeatherData m_weatherData;
+	uint32_t m_lastWeatherUpdate;
+	int m_currentMode;
+	uint32_t m_lastModeSwitch;
 };

@@ -5,19 +5,22 @@
 #include "esp_timer.h"
 #include <cstring>
 
-static const char* TAG = "DisplayController";
+namespace
+{
+	const char* TAG = "DisplayController";
+}
 
 #define WEATHER_UPDATE_INTERVAL_MS (60 * 60 * 1000)  // 1 hour
 #define MODE_SWITCH_INTERVAL_MS (10 * 1000)  // 10 seconds per mode
 
 DisplayController::DisplayController(DisplayManager* display)
-	: display_(display)
-	, last_weather_update_(0)
-	, current_mode_(0)
-	, last_mode_switch_(0)
+	: m_display(display)
+	, m_lastWeatherUpdate(0)
+	, m_currentMode(0)
+	, m_lastModeSwitch(0)
 {
-	ConfigManager::loadConfig(config_);
-	memset(&weather_data_, 0, sizeof(weather_data_));
+	ConfigManager::loadConfig(m_config);
+	memset(&m_weatherData, 0, sizeof(m_weatherData));
 }
 
 void DisplayController::start()
@@ -25,101 +28,101 @@ void DisplayController::start()
 	ESP_LOGI(TAG, "Display controller started");
 
 	// Initial weather fetch
-	if (config_.showWeather)
+	if (m_config.showWeather)
 	{
-		WeatherFetcher::fetchWeather(weather_data_);
-		last_weather_update_ = esp_timer_get_time() / 1000;
+		WeatherFetcher::fetchWeather(m_weatherData);
+		m_lastWeatherUpdate = esp_timer_get_time() / 1000;
 	}
 }
 
 void DisplayController::updateDisplay()
 {
 	// Reload config in case it changed via web UI
-	ConfigManager::loadConfig(config_);
+	ConfigManager::loadConfig(m_config);
 
 	uint32_t now = esp_timer_get_time() / 1000;
 
 	// Update weather if needed
-	if (config_.showWeather && (now - last_weather_update_ > WEATHER_UPDATE_INTERVAL_MS))
+	if (m_config.showWeather && (now - m_lastWeatherUpdate > WEATHER_UPDATE_INTERVAL_MS))
 	{
-		WeatherFetcher::fetchWeather(weather_data_);
-		last_weather_update_ = now;
+		WeatherFetcher::fetchWeather(m_weatherData);
+		m_lastWeatherUpdate = now;
 	}
 
 	// Count enabled modes
-	int mode_count = 0;
-	if (config_.showClock) mode_count++;
-	if (config_.showWeather) mode_count++;
-	if (config_.showStarWarsQuotes) mode_count++;
-	if (config_.showLOTRQuotes) mode_count++;
-	if (strlen(config_.customText) > 0) mode_count++;
+	int modeCount = 0;
+	if (m_config.showClock) modeCount++;
+	if (m_config.showWeather) modeCount++;
+	if (m_config.showStarWarsQuotes) modeCount++;
+	if (m_config.showLOTRQuotes) modeCount++;
+	if (strlen(m_config.customText) > 0) modeCount++;
 
-	if (mode_count == 0)
+	if (modeCount == 0)
 	{
 		// No modes enabled, show default message
-		display_->scrollText("ESP-Clock - Configure via web UI", 50);
+		m_display->scrollText("ESP-Clock - Configure via web UI", 50);
 		vTaskDelay(pdMS_TO_TICKS(5000));
 		return;
 	}
 
 	// Switch mode if interval elapsed
-	if (now - last_mode_switch_ > MODE_SWITCH_INTERVAL_MS)
+	if (now - m_lastModeSwitch > MODE_SWITCH_INTERVAL_MS)
 	{
-		current_mode_ = (current_mode_ + 1) % mode_count;
-		last_mode_switch_ = now;
+		m_currentMode = (m_currentMode + 1) % modeCount;
+		m_lastModeSwitch = now;
 	}
 
 	// Display current mode
-	int mode_index = 0;
+	int modeIndex = 0;
 
-	if (config_.showClock)
+	if (m_config.showClock)
 	{
-		if (mode_index == current_mode_)
+		if (modeIndex == m_currentMode)
 		{
 			displayClock();
 			return;
 		}
-		mode_index++;
+		modeIndex++;
 	}
 
-	if (config_.showWeather)
+	if (m_config.showWeather)
 	{
-		if (mode_index == current_mode_)
+		if (modeIndex == m_currentMode)
 		{
 			displayWeather();
 			return;
 		}
-		mode_index++;
+		modeIndex++;
 	}
 
-	if (config_.showStarWarsQuotes)
+	if (m_config.showStarWarsQuotes)
 	{
-		if (mode_index == current_mode_)
+		if (modeIndex == m_currentMode)
 		{
 			displayQuote(true);
 			return;
 		}
-		mode_index++;
+		modeIndex++;
 	}
 
-	if (config_.showLOTRQuotes)
+	if (m_config.showLOTRQuotes)
 	{
-		if (mode_index == current_mode_)
+		if (modeIndex == m_currentMode)
 		{
 			displayQuote(false);
 			return;
 		}
-		mode_index++;
+		modeIndex++;
 	}
 
-	if (strlen(config_.customText) > 0)
+	if (strlen(m_config.customText) > 0)
 	{
-		if (mode_index == current_mode_)
+		if (modeIndex == m_currentMode)
 		{
 			displayCustomText();
 			return;
 		}
-		mode_index++;
+		modeIndex++;
 	}
 }
 
@@ -127,32 +130,32 @@ void DisplayController::displayClock()
 {
 	if (!TimeSync::isTimeSynced())
 	{
-		display_->displayText("--:--", 8);
-		display_->update();
+		m_display->displayText("--:--", 8);
+		m_display->update();
 		vTaskDelay(pdMS_TO_TICKS(1000));
 		return;
 	}
 
 	struct tm timeinfo;
 	TimeSync::getCurrentTime(timeinfo);
-	display_->displayClock(timeinfo.tm_hour, timeinfo.tm_min, false);
+	m_display->displayClock(timeinfo.tm_hour, timeinfo.tm_min, false);
 	vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
 void DisplayController::displayWeather()
 {
-	char weather_str[128];
-	WeatherFetcher::formatWeatherString(weather_data_, weather_str, sizeof(weather_str));
-	display_->scrollText(weather_str, 50);
+	char weatherStr[128];
+	WeatherFetcher::formatWeatherString(m_weatherData, weatherStr, sizeof(weatherStr));
+	m_display->scrollText(weatherStr, 50);
 }
 
-void DisplayController::displayQuote(bool star_wars)
+void DisplayController::displayQuote(bool starWars)
 {
-	const char* quote = star_wars ? Quotes::getStarWarsQuote() : Quotes::getLOTRQuote();
-	display_->scrollText(quote, 50);
+	const char* quote = starWars ? Quotes::getStarWarsQuote() : Quotes::getLOTRQuote();
+	m_display->scrollText(quote, 50);
 }
 
 void DisplayController::displayCustomText()
 {
-	display_->scrollText(config_.customText, 50);
+	m_display->scrollText(m_config.customText, 50);
 }

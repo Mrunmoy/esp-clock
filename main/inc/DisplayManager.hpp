@@ -9,16 +9,16 @@ public:
 	DisplayManager(MAX7219* display);
 
 	void clear();
-	void displayText(const char* text, int start_x = 0);
-	void scrollText(const char* text, int scroll_speed_ms = 50);
-	void displayClock(int hour, int minute, bool show_seconds = false);
+	void displayText(const char* text, int startX = 0);
+	void scrollText(const char* text, int scrollSpeedMs = 50);
+	void displayClock(int hour, int minute, bool showSeconds = false);
 	void update();
 
 private:
-	void drawChar(char c, int x_offset);
+	void drawChar(char c, int xOffset);
 	const uint8_t* getCharBitmap(char c);
 
-	MAX7219* display_;
-	int scroll_offset_;
-	std::string scroll_text_;
+	MAX7219* m_display;
+	int m_scrollOffset;
+	std::string m_scrollText;
 };

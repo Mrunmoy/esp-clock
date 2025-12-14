@@ -5,7 +5,10 @@
 #include "driver/gpio.h"
 #include <cstring>
 
-static const char* TAG = "MAX7219";
+namespace
+{
+	const char* TAG = "MAX7219";
+}
 
 // MAX7219 Register addresses
 #define REG_NOOP        0x00
@@ -23,52 +26,52 @@ static const char* TAG = "MAX7219";
 #define REG_SHUTDOWN    0x0C
 #define REG_DISPLAY_TEST 0x0F
 
-MAX7219::MAX7219(int num_devices)
-	: spi_(nullptr)
-	, num_devices_(num_devices)
-	, display_buffer_(nullptr)
-	, cs_pin_(-1)
+MAX7219::MAX7219(int numDevices)
+	: m_spi(nullptr)
+	, m_numDevices(numDevices)
+	, m_displayBuffer(nullptr)
+	, m_csPin(-1)
 {
 	// Allocate display buffer
-	display_buffer_ = new uint8_t*[num_devices_];
-	for (int i = 0; i < num_devices_; i++)
+	m_displayBuffer = new uint8_t*[m_numDevices];
+	for (int i = 0; i < m_numDevices; i++)
 	{
-		display_buffer_[i] = new uint8_t[8];
-		memset(display_buffer_[i], 0, 8);
+		m_displayBuffer[i] = new uint8_t[8];
+		memset(m_displayBuffer[i], 0, 8);
 	}
 }
 
 MAX7219::~MAX7219()
 {
-	if (display_buffer_)
+	if (m_displayBuffer)
 	{
-		for (int i = 0; i < num_devices_; i++)
+		for (int i = 0; i < m_numDevices; i++)
 		{
-			delete[] display_buffer_[i];
+			delete[] m_displayBuffer[i];
 		}
-		delete[] display_buffer_;
+		delete[] m_displayBuffer;
 	}
 
-	if (spi_)
+	if (m_spi)
 	{
-		spi_bus_remove_device(spi_);
+		spi_bus_remove_device(m_spi);
 	}
 }
 
-bool MAX7219::init(int clk_pin, int mosi_pin, int cs_pin)
+bool MAX7219::init(int clkPin, int mosiPin, int csPin)
 {
-	cs_pin_ = cs_pin;
+	m_csPin = csPin;
 
 	// Configure SPI bus
-	spi_bus_config_t bus_config = {};
-	bus_config.mosi_io_num = mosi_pin;
-	bus_config.miso_io_num = -1;  // Not used
-	bus_config.sclk_io_num = clk_pin;
-	bus_config.quadwp_io_num = -1;
-	bus_config.quadhd_io_num = -1;
-	bus_config.max_transfer_sz = 0;
+	spi_bus_config_t busConfig = {};
+	busConfig.mosi_io_num = mosiPin;
+	busConfig.miso_io_num = -1;  // Not used
+	busConfig.sclk_io_num = clkPin;
+	busConfig.quadwp_io_num = -1;
+	busConfig.quadhd_io_num = -1;
+	busConfig.max_transfer_sz = 0;
 
-	esp_err_t ret = spi_bus_initialize(SPI2_HOST, &bus_config, SPI_DMA_CH_AUTO);
+	esp_err_t ret = spi_bus_initialize(SPI2_HOST, &busConfig, SPI_DMA_CH_AUTO);
 	if (ret != ESP_OK)
 	{
 		ESP_LOGE(TAG, "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
@@ -76,13 +79,13 @@ bool MAX7219::init(int clk_pin, int mosi_pin, int cs_pin)
 	}
 
 	// Configure SPI device
-	spi_device_interface_config_t dev_config = {};
-	dev_config.clock_speed_hz = 10 * 1000 * 1000;  // 10 MHz
-	dev_config.mode = 0;
-	dev_config.spics_io_num = cs_pin;
-	dev_config.queue_size = 1;
+	spi_device_interface_config_t devConfig = {};
+	devConfig.clock_speed_hz = 10 * 1000 * 1000;  // 10 MHz
+	devConfig.mode = 0;
+	devConfig.spics_io_num = csPin;
+	devConfig.queue_size = 1;
 
-	ret = spi_bus_add_device(SPI2_HOST, &dev_config, &spi_);
+	ret = spi_bus_add_device(SPI2_HOST, &devConfig, &m_spi);
 	if (ret != ESP_OK)
 	{
 		ESP_LOGE(TAG, "Failed to add SPI device: %s", esp_err_to_name(ret));
@@ -99,15 +102,15 @@ bool MAX7219::init(int clk_pin, int mosi_pin, int cs_pin)
 
 	clear();
 
-	ESP_LOGI(TAG, "Initialized %d MAX7219 device(s)", num_devices_);
+	ESP_LOGI(TAG, "Initialized %d MAX7219 device(s)", m_numDevices);
 	return true;
 }
 
 void MAX7219::clear()
 {
-	for (int i = 0; i < num_devices_; i++)
+	for (int i = 0; i < m_numDevices; i++)
 	{
-		memset(display_buffer_[i], 0, 8);
+		memset(m_displayBuffer[i], 0, 8);
 	}
 	displayBuffer();
 }
@@ -121,97 +124,97 @@ void MAX7219::setBrightness(uint8_t intensity)
 
 void MAX7219::setPixel(int device, int row, int col, bool on)
 {
-	if (device < 0 || device >= num_devices_)
+	if (device < 0 || device >= m_numDevices)
 		return;
 	if (row < 0 || row >= 8 || col < 0 || col >= 8)
 		return;
 
 	if (on)
 	{
-		display_buffer_[device][row] |= (1 << col);
+		m_displayBuffer[device][row] |= (1 << col);
 	}
 	else
 	{
-		display_buffer_[device][row] &= ~(1 << col);
+		m_displayBuffer[device][row] &= ~(1 << col);
 	}
 }
 
 void MAX7219::setRow(int device, int row, uint8_t data)
 {
-	if (device < 0 || device >= num_devices_)
+	if (device < 0 || device >= m_numDevices)
 		return;
 	if (row < 0 || row >= 8)
 		return;
 
-	display_buffer_[device][row] = data;
+	m_displayBuffer[device][row] = data;
 }
 
 void MAX7219::displayBuffer()
 {
 	for (int row = 0; row < 8; row++)
 	{
-		for (int dev = 0; dev < num_devices_; dev++)
+		for (int dev = 0; dev < m_numDevices; dev++)
 		{
-			writeRegister(dev, REG_DIGIT0 + row, display_buffer_[dev][row]);
+			writeRegister(dev, REG_DIGIT0 + row, m_displayBuffer[dev][row]);
 		}
 	}
 }
 
 uint8_t* MAX7219::getBuffer(int device)
 {
-	if (device < 0 || device >= num_devices_)
+	if (device < 0 || device >= m_numDevices)
 		return nullptr;
-	return display_buffer_[device];
+	return m_displayBuffer[device];
 }
 
 void MAX7219::writeRegister(int device, uint8_t reg, uint8_t data)
 {
-	if (device < 0 || device >= num_devices_)
+	if (device < 0 || device >= m_numDevices)
 		return;
 
-	uint8_t tx_data[2 * num_devices_];
-	memset(tx_data, 0, sizeof(tx_data));
+	uint8_t txData[2 * m_numDevices];
+	memset(txData, 0, sizeof(txData));
 
 	// Fill with NOOP for all devices except the target
-	for (int i = 0; i < num_devices_; i++)
+	for (int i = 0; i < m_numDevices; i++)
 	{
 		if (i == device)
 		{
-			tx_data[i * 2] = reg;
-			tx_data[i * 2 + 1] = data;
+			txData[i * 2] = reg;
+			txData[i * 2 + 1] = data;
 		}
 		else
 		{
-			tx_data[i * 2] = REG_NOOP;
-			tx_data[i * 2 + 1] = 0x00;
+			txData[i * 2] = REG_NOOP;
+			txData[i * 2 + 1] = 0x00;
 		}
 	}
 
 	spi_transaction_t trans = {};
-	trans.length = 16 * num_devices_;
-	trans.tx_buffer = tx_data;
+	trans.length = 16 * m_numDevices;
+	trans.tx_buffer = txData;
 
-	spi_device_transmit(spi_, &trans);
+	spi_device_transmit(m_spi, &trans);
 }
 
 void MAX7219::writeAll(uint8_t reg, uint8_t data)
 {
-	uint8_t tx_data[2 * num_devices_];
+	uint8_t txData[2 * m_numDevices];
 
-	for (int i = 0; i < num_devices_; i++)
+	for (int i = 0; i < m_numDevices; i++)
 	{
-		tx_data[i * 2] = reg;
-		tx_data[i * 2 + 1] = data;
+		txData[i * 2] = reg;
+		txData[i * 2 + 1] = data;
 	}
 
 	spi_transaction_t trans = {};
-	trans.length = 16 * num_devices_;
-	trans.tx_buffer = tx_data;
+	trans.length = 16 * m_numDevices;
+	trans.tx_buffer = txData;
 
-	spi_device_transmit(spi_, &trans);
+	spi_device_transmit(m_spi, &trans);
 }
 
-void MAX7219::scrollText(const char* text, int delay_ms)
+void MAX7219::scrollText(const char* text, int delayMs)
 {
 	// This is a placeholder - will be implemented in DisplayManager
 	ESP_LOGW(TAG, "scrollText not implemented in MAX7219 - use DisplayManager");

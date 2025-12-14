@@ -4,13 +4,16 @@
 #include <sys/time.h>
 #include <cstring>
 
-static const char* TAG = "TimeSync";
-static bool time_synced = false;
+namespace
+{
+	const char* TAG = "TimeSync";
+	bool timeSynced = false;
+}
 
-void time_sync_notification_cb(struct timeval *tv)
+void timeSyncNotificationCb(struct timeval *tv)
 {
 	ESP_LOGI(TAG, "Time synchronized");
-	time_synced = true;
+	timeSynced = true;
 }
 
 void TimeSync::init()
@@ -23,7 +26,7 @@ void TimeSync::init()
 
 	esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
 	esp_sntp_setservername(0, CONFIG_NTP_SERVER);
-	esp_sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+	esp_sntp_set_time_sync_notification_cb(timeSyncNotificationCb);
 	esp_sntp_init();
 }
 
@@ -32,29 +35,29 @@ void TimeSync::syncTime()
 	ESP_LOGI(TAG, "Waiting for time synchronization...");
 
 	int retry = 0;
-	const int retry_count = 10;
+	const int retryCount = 10;
 
-	while (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count)
+	while (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retryCount)
 	{
-		ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+		ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retryCount);
 		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
 
-	if (retry >= retry_count)
+	if (retry >= retryCount)
 	{
 		ESP_LOGW(TAG, "Time sync timeout");
-		time_synced = false;
+		timeSynced = false;
 	}
 	else
 	{
-		time_synced = true;
+		timeSynced = true;
 		ESP_LOGI(TAG, "Time synchronized successfully");
 	}
 }
 
 bool TimeSync::isTimeSynced()
 {
-	return time_synced;
+	return timeSynced;
 }
 
 void TimeSync::getCurrentTime(struct tm& timeinfo)

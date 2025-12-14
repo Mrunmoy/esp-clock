@@ -6,133 +6,136 @@
 #include <string>
 #include <cJSON.h>
 
-static const char* TAG = "WebServer";
-static httpd_handle_t server = nullptr;
-
-// Declare symbols created by `EMBED_FILES`
-extern const uint8_t index_html_start[] asm("_binary_index_html_start");
-extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
-
-// Handler to serve the embedded index.html at "/"
-static esp_err_t root_handler(httpd_req_t* req)
+namespace
 {
-	size_t html_len = index_html_end - index_html_start;
-	httpd_resp_set_type(req, "text/html");
-	return httpd_resp_send(req, reinterpret_cast<const char*>(index_html_start), html_len);
-}
+	const char* TAG = "WebServer";
+	httpd_handle_t server = nullptr;
 
-// Handler to get current configuration
-static esp_err_t config_get_handler(httpd_req_t* req)
-{
-	DisplayConfig config;
-	ConfigManager::loadConfig(config);
+	// Declare symbols created by `EMBED_FILES`
+	extern const uint8_t index_html_start[] asm("_binary_index_html_start");
+	extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
 
-	cJSON* root = cJSON_CreateObject();
-	cJSON_AddBoolToObject(root, "showClock", config.showClock);
-	cJSON_AddBoolToObject(root, "showWeather", config.showWeather);
-	cJSON_AddBoolToObject(root, "showStarWars", config.showStarWarsQuotes);
-	cJSON_AddBoolToObject(root, "showLOTR", config.showLOTRQuotes);
-	cJSON_AddStringToObject(root, "customText", config.customText);
-
-	char* json_str = cJSON_Print(root);
-	httpd_resp_set_type(req, "application/json");
-	httpd_resp_send(req, json_str, strlen(json_str));
-
-	free(json_str);
-	cJSON_Delete(root);
-	return ESP_OK;
-}
-
-// Handler to save configuration
-static esp_err_t config_post_handler(httpd_req_t* req)
-{
-	char buf[512];
-	int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
-	if (ret <= 0)
+	// Handler to serve the embedded index.html at "/"
+	esp_err_t rootHandler(httpd_req_t* req)
 	{
-		if (ret == HTTPD_SOCK_ERR_TIMEOUT)
-		{
-			httpd_resp_send_408(req);
-		}
-		return ESP_FAIL;
-	}
-	buf[ret] = '\0';
-
-	cJSON* root = cJSON_Parse(buf);
-	if (root == NULL)
-	{
-		httpd_resp_send_500(req);
-		return ESP_FAIL;
+		size_t htmlLen = index_html_end - index_html_start;
+		httpd_resp_set_type(req, "text/html");
+		return httpd_resp_send(req, reinterpret_cast<const char*>(index_html_start), htmlLen);
 	}
 
-	DisplayConfig config;
-	ConfigManager::loadConfig(config);
-
-	cJSON* item = cJSON_GetObjectItem(root, "showClock");
-	if (item) config.showClock = cJSON_IsTrue(item);
-
-	item = cJSON_GetObjectItem(root, "showWeather");
-	if (item) config.showWeather = cJSON_IsTrue(item);
-
-	item = cJSON_GetObjectItem(root, "showStarWars");
-	if (item) config.showStarWarsQuotes = cJSON_IsTrue(item);
-
-	item = cJSON_GetObjectItem(root, "showLOTR");
-	if (item) config.showLOTRQuotes = cJSON_IsTrue(item);
-
-	item = cJSON_GetObjectItem(root, "customText");
-	if (item && cJSON_IsString(item))
+	// Handler to get current configuration
+	esp_err_t configGetHandler(httpd_req_t* req)
 	{
-		strncpy(config.customText, item->valuestring, sizeof(config.customText) - 1);
-	}
+		DisplayConfig config;
+		ConfigManager::loadConfig(config);
 
-	ConfigManager::saveConfig(config);
-	cJSON_Delete(root);
+		cJSON* root = cJSON_CreateObject();
+		cJSON_AddBoolToObject(root, "showClock", config.showClock);
+		cJSON_AddBoolToObject(root, "showWeather", config.showWeather);
+		cJSON_AddBoolToObject(root, "showStarWars", config.showStarWarsQuotes);
+		cJSON_AddBoolToObject(root, "showLOTR", config.showLOTRQuotes);
+		cJSON_AddStringToObject(root, "customText", config.customText);
 
-	httpd_resp_send(req, "OK", 2);
-	return ESP_OK;
-}
+		char* jsonStr = cJSON_Print(root);
+		httpd_resp_set_type(req, "application/json");
+		httpd_resp_send(req, jsonStr, strlen(jsonStr));
 
-// Handler to save WiFi configuration
-static esp_err_t wifi_config_handler(httpd_req_t* req)
-{
-	char buf[256];
-	int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
-	if (ret <= 0)
-	{
-		if (ret == HTTPD_SOCK_ERR_TIMEOUT)
-		{
-			httpd_resp_send_408(req);
-		}
-		return ESP_FAIL;
-	}
-	buf[ret] = '\0';
-
-	cJSON* root = cJSON_Parse(buf);
-	if (root == NULL)
-	{
-		httpd_resp_send_500(req);
-		return ESP_FAIL;
-	}
-
-	cJSON* ssid_item = cJSON_GetObjectItem(root, "ssid");
-	cJSON* pass_item = cJSON_GetObjectItem(root, "password");
-
-	if (ssid_item && cJSON_IsString(ssid_item) && pass_item && cJSON_IsString(pass_item))
-	{
-		WifiManager::saveWiFiConfig(ssid_item->valuestring, pass_item->valuestring);
-		httpd_resp_send(req, "OK - Rebooting...", 18);
+		free(jsonStr);
 		cJSON_Delete(root);
-
-		// Reboot after 2 seconds
-		vTaskDelay(2000 / portTICK_PERIOD_MS);
-		esp_restart();
 		return ESP_OK;
 	}
 
-	cJSON_Delete(root);
-	httpd_resp_send_500(req);
-	return ESP_FAIL;
+	// Handler to save configuration
+	esp_err_t configPostHandler(httpd_req_t* req)
+	{
+		char buf[512];
+		int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+		if (ret <= 0)
+		{
+			if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+			{
+				httpd_resp_send_408(req);
+			}
+			return ESP_FAIL;
+		}
+		buf[ret] = '\0';
+
+		cJSON* root = cJSON_Parse(buf);
+		if (root == NULL)
+		{
+			httpd_resp_send_500(req);
+			return ESP_FAIL;
+		}
+
+		DisplayConfig config;
+		ConfigManager::loadConfig(config);
+
+		cJSON* item = cJSON_GetObjectItem(root, "showClock");
+		if (item) config.showClock = cJSON_IsTrue(item);
+
+		item = cJSON_GetObjectItem(root, "showWeather");
+		if (item) config.showWeather = cJSON_IsTrue(item);
+
+		item = cJSON_GetObjectItem(root, "showStarWars");
+		if (item) config.showStarWarsQuotes = cJSON_IsTrue(item);
+
+		item = cJSON_GetObjectItem(root, "showLOTR");
+		if (item) config.showLOTRQuotes = cJSON_IsTrue(item);
+
+		item = cJSON_GetObjectItem(root, "customText");
+		if (item && cJSON_IsString(item))
+		{
+			strncpy(config.customText, item->valuestring, sizeof(config.customText) - 1);
+		}
+
+		ConfigManager::saveConfig(config);
+		cJSON_Delete(root);
+
+		httpd_resp_send(req, "OK", 2);
+		return ESP_OK;
+	}
+
+	// Handler to save WiFi configuration
+	esp_err_t wifiConfigHandler(httpd_req_t* req)
+	{
+		char buf[256];
+		int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+		if (ret <= 0)
+		{
+			if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+			{
+				httpd_resp_send_408(req);
+			}
+			return ESP_FAIL;
+		}
+		buf[ret] = '\0';
+
+		cJSON* root = cJSON_Parse(buf);
+		if (root == NULL)
+		{
+			httpd_resp_send_500(req);
+			return ESP_FAIL;
+		}
+
+		cJSON* ssidItem = cJSON_GetObjectItem(root, "ssid");
+		cJSON* passItem = cJSON_GetObjectItem(root, "password");
+
+		if (ssidItem && cJSON_IsString(ssidItem) && passItem && cJSON_IsString(passItem))
+		{
+			WifiManager::saveWiFiConfig(ssidItem->valuestring, passItem->valuestring);
+			httpd_resp_send(req, "OK - Rebooting...", 18);
+			cJSON_Delete(root);
+
+			// Reboot after 2 seconds
+			vTaskDelay(2000 / portTICK_PERIOD_MS);
+			esp_restart();
+			return ESP_OK;
+		}
+
+		cJSON_Delete(root);
+		httpd_resp_send_500(req);
+		return ESP_FAIL;
+	}
 }
 
 void WebServer::start()
