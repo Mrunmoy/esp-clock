@@ -154,6 +154,8 @@ idf.py -p /dev/ttyACM0 flash monitor
 
 Access the web UI at the ESP32's IP address (check your router or serial monitor for the IP).
 
+<img width="407" height="863" alt="image" src="https://github.com/user-attachments/assets/10057735-72e4-4d01-a638-a6b91a3c0872" />
+
 Configure:
 - Which display modes to show (clock, weather, quotes, custom text)
 - Custom scrolling text
