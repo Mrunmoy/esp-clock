@@ -145,38 +145,38 @@ void WebServer::start()
 
 	if (httpd_start(&server, &config) == ESP_OK)
 	{
-		httpd_uri_t root_uri = {
+		httpd_uri_t rootUri = {
 			.uri      = "/",
 			.method   = HTTP_GET,
-			.handler  = root_handler,
+			.handler  = rootHandler,
 			.user_ctx = nullptr,
 		};
 
-		httpd_uri_t config_get_uri = {
+		httpd_uri_t configGetUri = {
 			.uri      = "/api/config",
 			.method   = HTTP_GET,
-			.handler  = config_get_handler,
+			.handler  = configGetHandler,
 			.user_ctx = nullptr,
 		};
 
-		httpd_uri_t config_post_uri = {
+		httpd_uri_t configPostUri = {
 			.uri      = "/api/config",
 			.method   = HTTP_POST,
-			.handler  = config_post_handler,
+			.handler  = configPostHandler,
 			.user_ctx = nullptr,
 		};
 
-		httpd_uri_t wifi_config_uri = {
+		httpd_uri_t wifiConfigUri = {
 			.uri      = "/api/wifi",
 			.method   = HTTP_POST,
-			.handler  = wifi_config_handler,
+			.handler  = wifiConfigHandler,
 			.user_ctx = nullptr,
 		};
 
-		httpd_register_uri_handler(server, &root_uri);
-		httpd_register_uri_handler(server, &config_get_uri);
-		httpd_register_uri_handler(server, &config_post_uri);
-		httpd_register_uri_handler(server, &wifi_config_uri);
+		httpd_register_uri_handler(server, &rootUri);
+		httpd_register_uri_handler(server, &configGetUri);
+		httpd_register_uri_handler(server, &configPostUri);
+		httpd_register_uri_handler(server, &wifiConfigUri);
 
 		ESP_LOGI(TAG, "Web server started");
 	}

@@ -18,7 +18,7 @@ private:
 	void drawChar(char c, int xOffset);
 	const uint8_t* getCharBitmap(char c);
 
-	MAX7219* m_display;
-	int m_scrollOffset;
-	std::string m_scrollText;
+	MAX7219* m_display = nullptr;
+	int m_scrollOffset = 0;
+	std::string m_scrollText = "";
 };

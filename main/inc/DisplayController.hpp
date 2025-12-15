@@ -18,10 +18,10 @@ private:
 	void displayQuote(bool starWars);
 	void displayCustomText();
 
-	DisplayManager* m_display;
-	DisplayConfig m_config;
-	WeatherData m_weatherData;
-	uint32_t m_lastWeatherUpdate;
-	int m_currentMode;
-	uint32_t m_lastModeSwitch;
+	DisplayManager* m_display = nullptr;
+	DisplayConfig m_config = {};
+	WeatherData m_weatherData = {};
+	uint32_t m_lastWeatherUpdate = 0;
+	int m_currentMode = 0;
+	uint32_t m_lastModeSwitch = 0;
 };

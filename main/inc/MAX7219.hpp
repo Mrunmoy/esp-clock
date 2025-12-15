@@ -24,8 +24,8 @@ private:
 	void writeRegister(int device, uint8_t reg, uint8_t data);
 	void writeAll(uint8_t reg, uint8_t data);
 
-	spi_device_handle_t m_spi;
-	int m_numDevices;
-	uint8_t** m_displayBuffer;
-	int m_csPin;
+	spi_device_handle_t m_spi = nullptr;
+	int m_numDevices = 0;
+	uint8_t** m_displayBuffer = nullptr;
+	int m_csPin = -1;
 };
