@@ -24,7 +24,10 @@ struct DisplayConfig
 	bool showWeather;          ///< Display weather information
 	bool showStarWarsQuotes;   ///< Display Star Wars quotes
 	bool showLOTRQuotes;       ///< Display Lord of the Rings quotes
+	bool displayFlipped;       ///< Flip display 180 degrees for upside-down mounting
+	uint8_t brightness;        ///< Display brightness (0-15, default 8)
 	char customText[256];      ///< Custom user-defined text to scroll
+	char weatherApiKey[64];    ///< OpenWeather API key
 };
 
 /**

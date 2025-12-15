@@ -34,7 +34,10 @@ namespace
 		cJSON_AddBoolToObject(root, "showWeather", config.showWeather);
 		cJSON_AddBoolToObject(root, "showStarWars", config.showStarWarsQuotes);
 		cJSON_AddBoolToObject(root, "showLOTR", config.showLOTRQuotes);
+		cJSON_AddBoolToObject(root, "displayFlipped", config.displayFlipped);
+		cJSON_AddNumberToObject(root, "brightness", config.brightness);
 		cJSON_AddStringToObject(root, "customText", config.customText);
+		cJSON_AddStringToObject(root, "weatherApiKey", config.weatherApiKey);
 
 		char* jsonStr = cJSON_Print(root);
 		httpd_resp_set_type(req, "application/json");
@@ -82,10 +85,29 @@ namespace
 		item = cJSON_GetObjectItem(root, "showLOTR");
 		if (item) config.showLOTRQuotes = cJSON_IsTrue(item);
 
+		item = cJSON_GetObjectItem(root, "displayFlipped");
+		if (item) config.displayFlipped = cJSON_IsTrue(item);
+
+		item = cJSON_GetObjectItem(root, "brightness");
+		if (item && cJSON_IsNumber(item))
+		{
+			int brightness = item->valueint;
+			if (brightness < 0) brightness = 0;
+			if (brightness > 15) brightness = 15;
+			config.brightness = brightness;
+		}
+
 		item = cJSON_GetObjectItem(root, "customText");
 		if (item && cJSON_IsString(item))
 		{
 			strncpy(config.customText, item->valuestring, sizeof(config.customText) - 1);
+		}
+
+		item = cJSON_GetObjectItem(root, "weatherApiKey");
+		if (item && cJSON_IsString(item))
+		{
+			strncpy(config.weatherApiKey, item->valuestring, sizeof(config.weatherApiKey) - 1);
+			config.weatherApiKey[sizeof(config.weatherApiKey) - 1] = '\0';
 		}
 
 		ConfigManager::saveConfig(config);

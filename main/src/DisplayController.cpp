@@ -30,7 +30,7 @@ void DisplayController::start()
 	// Initial weather fetch
 	if (m_config.showWeather)
 	{
-		WeatherFetcher::fetchWeather(m_weatherData);
+		WeatherFetcher::fetchWeather(m_weatherData, m_config.weatherApiKey);
 		m_lastWeatherUpdate = esp_timer_get_time() / 1000;
 	}
 }
@@ -40,12 +40,16 @@ void DisplayController::updateDisplay()
 	// Reload config in case it changed via web UI
 	ConfigManager::loadConfig(m_config);
 
+	// Update display settings
+	m_display->setFlipped(m_config.displayFlipped);
+	m_display->setBrightness(m_config.brightness);
+
 	uint32_t now = esp_timer_get_time() / 1000;
 
 	// Update weather if needed
 	if (m_config.showWeather && (now - m_lastWeatherUpdate > WEATHER_UPDATE_INTERVAL_MS))
 	{
-		WeatherFetcher::fetchWeather(m_weatherData);
+		WeatherFetcher::fetchWeather(m_weatherData, m_config.weatherApiKey);
 		m_lastWeatherUpdate = now;
 	}
 

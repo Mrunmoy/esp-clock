@@ -32,11 +32,16 @@ esp_err_t httpEventHandler(esp_http_client_event_t *evt)
 	return ESP_OK;
 }
 
-bool WeatherFetcher::fetchWeather(WeatherData& data)
+bool WeatherFetcher::fetchWeather(WeatherData& data, const char* apiKey)
 {
 	data.valid = false;
 
-	const char* apiKey = CONFIG_OPENWEATHER_API_KEY;
+	// Use provided API key or fall back to Kconfig
+	if (!apiKey || strlen(apiKey) == 0)
+	{
+		apiKey = CONFIG_OPENWEATHER_API_KEY;
+	}
+
 	if (strlen(apiKey) == 0)
 	{
 		ESP_LOGW(TAG, "OpenWeather API key not configured");

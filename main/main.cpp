@@ -73,6 +73,12 @@ extern "C" void app_main(void)
 	DisplayManager displayManager(&display);
 	DisplayController displayController(&displayManager);
 
+	// Load config and apply flip setting before showing startup message
+	DisplayConfig config;
+	ConfigManager::loadConfig(config);
+	displayManager.setFlipped(config.displayFlipped);
+	displayManager.setBrightness(config.brightness);
+
 	// Show startup message
 	displayManager.scrollText("ESP-Clock v1.0", 50);
 

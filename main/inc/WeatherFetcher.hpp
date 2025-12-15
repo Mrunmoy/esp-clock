@@ -38,20 +38,21 @@ public:
 	/**
 	 * @brief Fetch current weather from OpenWeatherMap
 	 *
-	 * Makes HTTP GET request to OpenWeatherMap API using configuration
-	 * from sdkconfig (API key, city, country code). Parses JSON response
+	 * Makes HTTP GET request to OpenWeatherMap API using API key from
+	 * configuration and city/country from sdkconfig. Parses JSON response
 	 * and populates WeatherData structure.
 	 *
 	 * @param data Output parameter for weather information
+	 * @param apiKey OpenWeather API key (if empty, uses CONFIG_OPENWEATHER_API_KEY)
 	 * @return true if fetch and parse successful, false on error
 	 *
 	 * @note Requires:
 	 *  - WiFi connection
-	 *  - CONFIG_OPENWEATHER_API_KEY set
+	 *  - Valid API key
 	 *  - CONFIG_WEATHER_CITY set
 	 *  - CONFIG_WEATHER_COUNTRY_CODE set
 	 */
-	static bool fetchWeather(WeatherData& data);
+	static bool fetchWeather(WeatherData& data, const char* apiKey = nullptr);
 
 	/**
 	 * @brief Format weather data as display string

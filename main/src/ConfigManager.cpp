@@ -38,7 +38,16 @@ bool ConfigManager::saveConfig(const DisplayConfig& config)
 	err = nvs_set_u8(nvsHandle, "show_lotr", config.showLOTRQuotes ? 1 : 0);
 	if (err != ESP_OK) goto error;
 
+	err = nvs_set_u8(nvsHandle, "flip_display", config.displayFlipped ? 1 : 0);
+	if (err != ESP_OK) goto error;
+
+	err = nvs_set_u8(nvsHandle, "brightness", config.brightness);
+	if (err != ESP_OK) goto error;
+
 	err = nvs_set_str(nvsHandle, "custom_text", config.customText);
+	if (err != ESP_OK) goto error;
+
+	err = nvs_set_str(nvsHandle, "api_key", config.weatherApiKey);
 	if (err != ESP_OK) goto error;
 
 	err = nvs_commit(nvsHandle);
@@ -80,11 +89,26 @@ bool ConfigManager::loadConfig(DisplayConfig& config)
 	err = nvs_get_u8(nvsHandle, "show_lotr", &val);
 	config.showLOTRQuotes = (err == ESP_OK) ? (val != 0) : false;
 
+	err = nvs_get_u8(nvsHandle, "flip_display", &val);
+	config.displayFlipped = (err == ESP_OK) ? (val != 0) : false;
+
+	err = nvs_get_u8(nvsHandle, "brightness", &val);
+	config.brightness = (err == ESP_OK) ? val : 8;
+
 	size_t textLen = sizeof(config.customText);
 	err = nvs_get_str(nvsHandle, "custom_text", config.customText, &textLen);
 	if (err != ESP_OK)
 	{
 		config.customText[0] = '\0';
+	}
+
+	size_t apiKeyLen = sizeof(config.weatherApiKey);
+	err = nvs_get_str(nvsHandle, "api_key", config.weatherApiKey, &apiKeyLen);
+	if (err != ESP_OK)
+	{
+		// Fallback to Kconfig value if not in NVS
+		strncpy(config.weatherApiKey, CONFIG_OPENWEATHER_API_KEY, sizeof(config.weatherApiKey) - 1);
+		config.weatherApiKey[sizeof(config.weatherApiKey) - 1] = '\0';
 	}
 
 	nvs_close(nvsHandle);
@@ -97,5 +121,9 @@ void ConfigManager::getDefaultConfig(DisplayConfig& config)
 	config.showWeather = false;
 	config.showStarWarsQuotes = false;
 	config.showLOTRQuotes = false;
+	config.displayFlipped = false;
+	config.brightness = 8;
 	config.customText[0] = '\0';
+	strncpy(config.weatherApiKey, CONFIG_OPENWEATHER_API_KEY, sizeof(config.weatherApiKey) - 1);
+	config.weatherApiKey[sizeof(config.weatherApiKey) - 1] = '\0';
 }

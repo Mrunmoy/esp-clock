@@ -13,6 +13,8 @@ public:
 	void scrollText(const char* text, int scrollSpeedMs = 50);
 	void displayClock(int hour, int minute, bool showSeconds = false);
 	void update();
+	void setFlipped(bool flipped);
+	void setBrightness(uint8_t intensity);
 
 private:
 	void drawChar(char c, int xOffset);
@@ -21,4 +23,5 @@ private:
 	MAX7219* m_display = nullptr;
 	int m_scrollOffset = 0;
 	std::string m_scrollText = "";
+	bool m_flipped = false;
 };
