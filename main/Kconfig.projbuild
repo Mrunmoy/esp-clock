@@ -55,4 +55,12 @@ menu "ESP Clock Configuration"
 		help
 			NTP server for time synchronization.
 
+	config MOISTURE_SENSOR_ADC_CHANNEL
+		int "Moisture sensor ADC channel"
+		range 0 9
+		default 0
+		help
+			ADC1 channel number connected to the moisture sensor output.
+			Channel 0 corresponds to GPIO1 on ESP32-S3.
+
 endmenu

@@ -9,6 +9,7 @@ set(SRCS
     "src/Font5x7.cpp"
     "src/DisplayManager.cpp"
     "src/DisplayController.cpp"
+    "src/MoistureSensor.cpp"
     "main.cpp"
 )
 
@@ -27,4 +28,5 @@ idf_component_register(
         esp_timer
         json
         lwip
+        esp_adc
 )

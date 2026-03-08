@@ -3,13 +3,25 @@
 #include "ConfigManager.hpp"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <string>
 #include <cJSON.h>
+
+// ---------------------------------------------------------------------------
+// Static member definitions
+// ---------------------------------------------------------------------------
+WebServer::MoistureObserver WebServer::s_moistureObserver;
 
 namespace
 {
 	const char* TAG = "WebServer";
 	httpd_handle_t server = nullptr;
+
+	// Moisture reading stored by the push observer, protected by a mutex so
+	// that the FreeRTOS sensor task and the HTTP task share it safely.
+	SemaphoreHandle_t g_moistureMutex  = nullptr;
+	MoistureReading   g_moistureReading{0.0f, false};
 
 	// Declare symbols created by `EMBED_FILES`
 	extern const uint8_t index_html_start[] asm("_binary_index_html_start");
@@ -21,6 +33,29 @@ namespace
 		size_t htmlLen = index_html_end - index_html_start;
 		httpd_resp_set_type(req, "text/html");
 		return httpd_resp_send(req, reinterpret_cast<const char*>(index_html_start), htmlLen);
+	}
+
+	// Handler to serve the latest pushed moisture reading
+	esp_err_t moistureGetHandler(httpd_req_t* req)
+	{
+		MoistureReading snapshot{0.0f, false};
+		if (g_moistureMutex && xSemaphoreTake(g_moistureMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+		{
+			snapshot = g_moistureReading;
+			xSemaphoreGive(g_moistureMutex);
+		}
+
+		cJSON* root = cJSON_CreateObject();
+		cJSON_AddNumberToObject(root, "moisture", static_cast<double>(snapshot.moisture));
+		cJSON_AddBoolToObject(root, "valid", snapshot.valid);
+
+		char* jsonStr = cJSON_Print(root);
+		httpd_resp_set_type(req, "application/json");
+		httpd_resp_send(req, jsonStr, strlen(jsonStr));
+
+		free(jsonStr);
+		cJSON_Delete(root);
+		return ESP_OK;
 	}
 
 	// Handler to get current configuration
@@ -162,6 +197,11 @@ namespace
 
 void WebServer::start()
 {
+	if (!g_moistureMutex)
+	{
+		g_moistureMutex = xSemaphoreCreateMutex();
+	}
+
 	httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 	config.uri_match_fn = httpd_uri_match_wildcard;
 
@@ -195,10 +235,18 @@ void WebServer::start()
 			.user_ctx = nullptr,
 		};
 
+		httpd_uri_t moistureGetUri = {
+			.uri      = "/api/moisture",
+			.method   = HTTP_GET,
+			.handler  = moistureGetHandler,
+			.user_ctx = nullptr,
+		};
+
 		httpd_register_uri_handler(server, &rootUri);
 		httpd_register_uri_handler(server, &configGetUri);
 		httpd_register_uri_handler(server, &configPostUri);
 		httpd_register_uri_handler(server, &wifiConfigUri);
+		httpd_register_uri_handler(server, &moistureGetUri);
 
 		ESP_LOGI(TAG, "Web server started");
 	}
@@ -215,4 +263,22 @@ void WebServer::stop()
 		httpd_stop(server);
 		server = nullptr;
 	}
+}
+
+// ---------------------------------------------------------------------------
+// ISensorObserver implementation — called from the sensor task (push)
+// ---------------------------------------------------------------------------
+
+void WebServer::MoistureObserver::onMoistureReading(const MoistureReading& reading)
+{
+	if (g_moistureMutex && xSemaphoreTake(g_moistureMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+	{
+		g_moistureReading = reading;
+		xSemaphoreGive(g_moistureMutex);
+	}
+}
+
+ISensorObserver* WebServer::getMoistureObserver()
+{
+	return &s_moistureObserver;
 }
