@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP Clock Configuration</title>
+    <title>Soil Moisture Monitor</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #2d5016 0%, #4a7c26 50%, #6b8f3c 100%);
             min-height: 100vh;
             padding: 20px;
             display: flex;
@@ -30,17 +26,8 @@
             padding: 40px;
         }
 
-        h1 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
+        h1 { color: #2d5016; margin-bottom: 5px; font-size: 28px; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
 
         .section {
             margin-bottom: 30px;
@@ -50,69 +37,125 @@
             color: #333;
             margin-bottom: 15px;
             font-size: 18px;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid #4a7c26;
             padding-bottom: 8px;
         }
 
-        .checkbox-group {
-            margin-bottom: 12px;
-        }
-
-        .checkbox-group label {
+        /* Gauge */
+        .gauge-container {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 8px;
-            transition: background 0.2s;
+            margin-bottom: 20px;
         }
 
-        .checkbox-group label:hover {
-            background: #f0f0f0;
+        .gauge {
+            width: 200px;
+            height: 100px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            cursor: pointer;
+        .gauge-bg {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(
+                #d32f2f 0deg 36deg,
+                #f57c00 36deg 72deg,
+                #fbc02d 72deg 108deg,
+                #4caf50 108deg 144deg,
+                #1976d2 144deg 180deg,
+                #e0e0e0 180deg 360deg
+            );
+            position: relative;
         }
 
-        .input-group {
-            margin-bottom: 15px;
+        .gauge-bg::after {
+            content: '';
+            position: absolute;
+            top: 30px; left: 30px; right: 30px; bottom: 30px;
+            background: white;
+            border-radius: 50%;
         }
 
+        .gauge-needle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            height: 80px;
+            background: #333;
+            transform-origin: bottom center;
+            transform: translateX(-50%) rotate(-90deg);
+            transition: transform 0.8s ease-out;
+            z-index: 10;
+            border-radius: 2px;
+        }
+
+        .gauge-center {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 16px;
+            background: #333;
+            border-radius: 50%;
+            z-index: 11;
+        }
+
+        .gauge-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .gauge-value span { font-size: 24px; color: #666; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .status-very-dry { background: #ffcdd2; color: #c62828; }
+        .status-dry { background: #ffe0b2; color: #e65100; }
+        .status-moist { background: #c8e6c9; color: #2e7d32; }
+        .status-wet { background: #bbdefb; color: #1565c0; }
+        .status-very-wet { background: #b3e5fc; color: #01579b; }
+
+        .raw-value {
+            color: #999;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .input-group { margin-bottom: 15px; }
         .input-group label {
             display: block;
             margin-bottom: 8px;
             color: #333;
             font-weight: 500;
         }
-
-        .input-group input,
-        .input-group textarea {
+        .input-group input {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
-            transition: border-color 0.3s;
         }
-
-        .input-group input:focus,
-        .input-group textarea:focus {
+        .input-group input:focus {
             outline: none;
-            border-color: #667eea;
-        }
-
-        .input-group textarea {
-            resize: vertical;
-            min-height: 80px;
-            font-family: inherit;
+            border-color: #4a7c26;
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2d5016 0%, #4a7c26 100%);
             color: white;
             border: none;
             padding: 14px 28px;
@@ -123,24 +166,21 @@
             width: 100%;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 20px rgba(45, 80, 22, 0.4);
         }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
         .btn-secondary {
             background: #f0f0f0;
             color: #333;
             margin-top: 10px;
         }
-
         .btn-secondary:hover {
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .btn-small {
+            padding: 10px 20px;
+            font-size: 14px;
         }
 
         .status {
@@ -150,18 +190,8 @@
             display: none;
             font-size: 14px;
         }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            display: block;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            display: block;
-        }
+        .status.success { background: #d4edda; color: #155724; display: block; }
+        .status.error { background: #f8d7da; color: #721c24; display: block; }
 
         .note {
             background: #fff3cd;
@@ -171,77 +201,56 @@
             font-size: 13px;
             margin-top: 10px;
         }
+
+        .calibration-row {
+            display: flex;
+            gap: 10px;
+        }
+        .calibration-row .input-group { flex: 1; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⏰ ESP Clock</h1>
-        <p class="subtitle">Configure your smart LED matrix display</p>
+        <h1>Soil Moisture Monitor</h1>
+        <p class="subtitle">DFRobot SEN0193 on ESP32-S3-Zero</p>
 
         <div class="section">
-            <h2>Display Modes</h2>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" id="showClock" checked>
-                    <span>📅 Show Clock</span>
-                </label>
-            </div>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" id="showWeather">
-                    <span>🌤️ Show Weather</span>
-                </label>
-            </div>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" id="showStarWars">
-                    <span>⚔️ Star Wars Quotes</span>
-                </label>
-            </div>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" id="showLOTR">
-                    <span>🧙 Lord of the Rings Quotes</span>
-                </label>
+            <h2>Current Reading</h2>
+            <div class="gauge-container">
+                <div class="gauge">
+                    <div class="gauge-bg"></div>
+                    <div class="gauge-needle" id="needle"></div>
+                    <div class="gauge-center"></div>
+                </div>
+                <div class="gauge-value" id="moistureValue">--<span>%</span></div>
+                <div id="statusBadge" class="status-badge">Loading...</div>
+                <div class="raw-value">Raw ADC: <span id="rawAdc">--</span></div>
             </div>
         </div>
 
         <div class="section">
-            <h2>Display Settings</h2>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" id="displayFlipped">
-                    <span>🔄 Flip Display 180°</span>
-                </label>
+            <h2>Sensor Calibration</h2>
+            <div class="calibration-row">
+                <div class="input-group">
+                    <label for="airValue">Dry Air Value</label>
+                    <input type="number" id="airValue" value="3000" min="0" max="4095">
+                </div>
+                <div class="input-group">
+                    <label for="waterValue">Water Value</label>
+                    <input type="number" id="waterValue" value="1500" min="0" max="4095">
+                </div>
             </div>
             <div class="input-group">
-                <label for="brightness">💡 Brightness: <span id="brightnessValue">50</span>%</label>
-                <input type="range" id="brightness" min="10" max="100" value="50" style="width: 100%; cursor: pointer;">
+                <label for="readInterval">Read Interval (ms)</label>
+                <input type="number" id="readInterval" value="2000" min="500" max="60000">
             </div>
-        </div>
-
-        <div class="section">
-            <h2>Custom Text</h2>
-            <div class="input-group">
-                <label for="customText">Scrolling Text (optional)</label>
-                <textarea id="customText" placeholder="Enter your custom message..."></textarea>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>Weather API</h2>
-            <div class="input-group">
-                <label for="weatherApiKey">OpenWeather API Key</label>
-                <input type="text" id="weatherApiKey" placeholder="Enter your API key">
-            </div>
+            <button class="btn btn-small" onclick="saveConfig()">Save Calibration</button>
             <div class="note">
-                Get a free API key from <a href="https://openweathermap.org/api" target="_blank" style="color: #856404;">OpenWeatherMap</a>
+                To calibrate: note the raw ADC in dry air and in water, then enter those values above.
             </div>
         </div>
 
-        <button class="btn" onclick="saveConfig()">💾 Save Configuration</button>
-
-        <div id="status" class="status"></div>
+        <div id="configStatus" class="status"></div>
 
         <div class="section" style="margin-top: 30px;">
             <h2>WiFi Configuration</h2>
@@ -253,73 +262,66 @@
                 <label for="wifiPassword">WiFi Password</label>
                 <input type="password" id="wifiPassword" placeholder="Enter WiFi password">
             </div>
-            <button class="btn btn-secondary" onclick="saveWiFi()">🔄 Update WiFi & Reboot</button>
+            <button class="btn btn-secondary" onclick="saveWiFi()">Update WiFi &amp; Reboot</button>
             <div class="note">
-                ⚠️ Changing WiFi will reboot the device. Make sure the credentials are correct!
+                Changing WiFi will reboot the device. Make sure the credentials are correct!
             </div>
         </div>
     </div>
 
     <script>
-        // Convert hardware brightness (0-15) to UI percentage (10-100)
-        // Hardware range 2-12 maps to UI 10-100%
-        function hwToUi(hwValue) {
-            // Clamp to hardware limits
-            if (hwValue < 2) hwValue = 2;
-            if (hwValue > 12) hwValue = 12;
-            // Map 2-12 to 10-100
-            return Math.round((hwValue - 2) / 10 * 90 + 10);
+        function updateGauge(pct) {
+            // Map 0-100% to -90deg to +90deg
+            var angle = (pct / 100) * 180 - 90;
+            document.getElementById('needle').style.transform =
+                'translateX(-50%) rotate(' + angle + 'deg)';
         }
 
-        // Convert UI percentage (10-100) to hardware brightness (2-12)
-        function uiToHw(uiValue) {
-            // Clamp to UI limits
-            if (uiValue < 10) uiValue = 10;
-            if (uiValue > 100) uiValue = 100;
-            // Map 10-100 to 2-12
-            return Math.round((uiValue - 10) / 90 * 10 + 2);
+        function getStatusClass(pct) {
+            if (pct <= 20) return 'status-very-dry';
+            if (pct <= 40) return 'status-dry';
+            if (pct <= 60) return 'status-moist';
+            if (pct <= 80) return 'status-wet';
+            return 'status-very-wet';
         }
 
-        // Load current configuration on page load
-        window.onload = function() {
-            fetch('/api/config')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('showClock').checked = data.showClock;
-                    document.getElementById('showWeather').checked = data.showWeather;
-                    document.getElementById('showStarWars').checked = data.showStarWars;
-                    document.getElementById('showLOTR').checked = data.showLOTR;
-                    document.getElementById('displayFlipped').checked = data.displayFlipped || false;
+        function fetchMoisture() {
+            fetch('/api/moisture')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    document.getElementById('moistureValue').innerHTML =
+                        data.percentage + '<span>%</span>';
+                    document.getElementById('rawAdc').textContent = data.rawAdc;
 
-                    const brightness = data.brightness !== undefined ? data.brightness : 8;
-                    const uiBrightness = hwToUi(brightness);
-                    document.getElementById('brightness').value = uiBrightness;
-                    document.getElementById('brightnessValue').textContent = uiBrightness;
+                    var badge = document.getElementById('statusBadge');
+                    badge.textContent = data.status;
+                    badge.className = 'status-badge ' + getStatusClass(data.percentage);
 
-                    document.getElementById('customText').value = data.customText || '';
-                    document.getElementById('weatherApiKey').value = data.weatherApiKey || '';
+                    updateGauge(data.percentage);
                 })
-                .catch(err => console.error('Failed to load config:', err));
+                .catch(function(err) {
+                    console.error('Failed to fetch moisture:', err);
+                });
+        }
 
-            // Update brightness value display when slider changes
-            document.getElementById('brightness').addEventListener('input', function(e) {
-                document.getElementById('brightnessValue').textContent = e.target.value;
-            });
-        };
+        function loadConfig() {
+            fetch('/api/config')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    document.getElementById('airValue').value = data.airValue;
+                    document.getElementById('waterValue').value = data.waterValue;
+                    document.getElementById('readInterval').value = data.readIntervalMs;
+                })
+                .catch(function(err) {
+                    console.error('Failed to load config:', err);
+                });
+        }
 
         function saveConfig() {
-            const uiBrightness = parseInt(document.getElementById('brightness').value);
-            const hwBrightness = uiToHw(uiBrightness);
-
-            const config = {
-                showClock: document.getElementById('showClock').checked,
-                showWeather: document.getElementById('showWeather').checked,
-                showStarWars: document.getElementById('showStarWars').checked,
-                showLOTR: document.getElementById('showLOTR').checked,
-                displayFlipped: document.getElementById('displayFlipped').checked,
-                brightness: hwBrightness,
-                customText: document.getElementById('customText').value,
-                weatherApiKey: document.getElementById('weatherApiKey').value
+            var config = {
+                airValue: parseInt(document.getElementById('airValue').value),
+                waterValue: parseInt(document.getElementById('waterValue').value),
+                readIntervalMs: parseInt(document.getElementById('readInterval').value)
             };
 
             fetch('/api/config', {
@@ -327,21 +329,21 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             })
-            .then(response => {
+            .then(function(response) {
                 if (response.ok) {
-                    showStatus('Configuration saved successfully!', 'success');
+                    showStatus('Calibration saved!', 'success');
                 } else {
-                    showStatus('Failed to save configuration', 'error');
+                    showStatus('Failed to save calibration', 'error');
                 }
             })
-            .catch(err => {
+            .catch(function(err) {
                 showStatus('Error: ' + err.message, 'error');
             });
         }
 
         function saveWiFi() {
-            const ssid = document.getElementById('wifiSSID').value;
-            const password = document.getElementById('wifiPassword').value;
+            var ssid = document.getElementById('wifiSSID').value;
+            var password = document.getElementById('wifiPassword').value;
 
             if (!ssid) {
                 showStatus('Please enter WiFi SSID', 'error');
@@ -349,35 +351,37 @@
             }
 
             if (confirm('This will reboot the device. Continue?')) {
-                const wifi = { ssid, password };
-
                 fetch('/api/wifi', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(wifi)
+                    body: JSON.stringify({ ssid: ssid, password: password })
                 })
-                .then(response => {
+                .then(function(response) {
                     if (response.ok) {
                         showStatus('WiFi updated! Device rebooting...', 'success');
                     } else {
                         showStatus('Failed to update WiFi', 'error');
                     }
                 })
-                .catch(err => {
+                .catch(function(err) {
                     showStatus('Error: ' + err.message, 'error');
                 });
             }
         }
 
         function showStatus(message, type) {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = 'status ' + type;
-
-            setTimeout(() => {
-                statusEl.className = 'status';
-            }, 5000);
+            var el = document.getElementById('configStatus');
+            el.textContent = message;
+            el.className = 'status ' + type;
+            setTimeout(function() { el.className = 'status'; }, 5000);
         }
+
+        // Initial load
+        loadConfig();
+        fetchMoisture();
+
+        // Auto-refresh moisture reading every 3 seconds
+        setInterval(fetchMoisture, 3000);
     </script>
 </body>
 </html>

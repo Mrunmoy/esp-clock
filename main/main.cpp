@@ -3,26 +3,17 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_system.h"
-#include "driver/gpio.h"
 
 #include "WifiManager.hpp"
 #include "WebServer.hpp"
 #include "ConfigManager.hpp"
-#include "TimeSync.hpp"
-#include "MAX7219.hpp"
-#include "DisplayManager.hpp"
-#include "DisplayController.hpp"
+#include "MoistureSensor.hpp"
 
 static const char* TAG = "main";
 
-// GPIO pin definitions for ESP32-S3 and MAX7219
-#define MAX7219_CLK_PIN   GPIO_NUM_12
-#define MAX7219_MOSI_PIN  GPIO_NUM_11
-#define MAX7219_CS_PIN    GPIO_NUM_10
-
 extern "C" void app_main(void)
 {
-	ESP_LOGI(TAG, "ESP Clock starting...");
+	ESP_LOGI(TAG, "Soil Moisture Monitor starting...");
 
 	// Initialize managers
 	WifiManager::init();
@@ -35,18 +26,14 @@ extern "C" void app_main(void)
 		WifiManager::connectToConfiguredWiFi();
 		WifiManager::waitForConnection();
 
-		if (WifiManager::isConnected())
-		{
-			ESP_LOGI(TAG, "WiFi connected successfully");
-
-			// Initialize time sync
-			TimeSync::init();
-			TimeSync::syncTime();
-		}
-		else
+		if (!WifiManager::isConnected())
 		{
 			ESP_LOGW(TAG, "Failed to connect to WiFi, starting AP mode");
 			WifiManager::startConfigAP();
+		}
+		else
+		{
+			ESP_LOGI(TAG, "WiFi connected successfully");
 		}
 	}
 	else
@@ -58,39 +45,35 @@ extern "C" void app_main(void)
 	// Start web server
 	WebServer::start();
 
-	// Initialize MAX7219 display
-	MAX7219 display(5);  // 5 devices in series
-	if (!display.init(MAX7219_CLK_PIN, MAX7219_MOSI_PIN, MAX7219_CS_PIN))
+	// Initialize moisture sensor
+	if (!MoistureSensor::init())
 	{
-		ESP_LOGE(TAG, "Failed to initialize MAX7219 display");
+		ESP_LOGE(TAG, "Failed to initialize moisture sensor");
 		return;
 	}
 
-	display.setBrightness(8);  // Medium brightness
-	ESP_LOGI(TAG, "MAX7219 display initialized");
+	ESP_LOGI(TAG, "Soil Moisture Monitor initialization complete");
 
-	// Create display manager and controller
-	DisplayManager displayManager(&display);
-	DisplayController displayController(&displayManager);
-
-	// Load config and apply flip setting before showing startup message
-	DisplayConfig config;
+	// Load config
+	MoistureConfig config;
 	ConfigManager::loadConfig(config);
-	displayManager.setFlipped(config.displayFlipped);
-	displayManager.setBrightness(config.brightness);
 
-	// Show startup message
-	displayManager.scrollText("ESP-Clock v1.0", 50);
-
-	// Start display controller
-	displayController.start();
-
-	ESP_LOGI(TAG, "ESP Clock initialization complete");
-
-	// Main loop
+	// Main loop — read sensor and update web server
 	while (true)
 	{
-		displayController.updateDisplay();
-		vTaskDelay(pdMS_TO_TICKS(100));
+		// Reload config each iteration for hot-reload from web UI
+		ConfigManager::loadConfig(config);
+
+		// Read sensor
+		MoistureReading reading = MoistureSensor::read(config.airValue, config.waterValue);
+
+		// Update web server with latest reading
+		WebServer::updateMoistureReading(reading);
+
+		ESP_LOGI(TAG, "Moisture: %u%% (raw=%u, status=%s)",
+		         reading.percentage, reading.rawAdc,
+		         getMoistureStatus(reading.percentage));
+
+		vTaskDelay(pdMS_TO_TICKS(config.readIntervalMs));
 	}
 }

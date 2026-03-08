@@ -2,7 +2,6 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "nvs.h"
-#include <cstring>
 
 namespace
 {
@@ -11,10 +10,10 @@ namespace
 
 void ConfigManager::init()
 {
-	// NVS should already be initialized by WifiManager
+	// NVS is initialized by WifiManager
 }
 
-bool ConfigManager::saveConfig(const DisplayConfig& config)
+bool ConfigManager::saveConfig(const MoistureConfig& config)
 {
 	nvs_handle_t nvsHandle;
 	esp_err_t err;
@@ -26,35 +25,21 @@ bool ConfigManager::saveConfig(const DisplayConfig& config)
 		return false;
 	}
 
-	err = nvs_set_u8(nvsHandle, "show_clock", config.showClock ? 1 : 0);
+	err = nvs_set_u16(nvsHandle, "air_value", config.airValue);
 	if (err != ESP_OK) goto error;
 
-	err = nvs_set_u8(nvsHandle, "show_weather", config.showWeather ? 1 : 0);
+	err = nvs_set_u16(nvsHandle, "water_value", config.waterValue);
 	if (err != ESP_OK) goto error;
 
-	err = nvs_set_u8(nvsHandle, "show_sw", config.showStarWarsQuotes ? 1 : 0);
-	if (err != ESP_OK) goto error;
-
-	err = nvs_set_u8(nvsHandle, "show_lotr", config.showLOTRQuotes ? 1 : 0);
-	if (err != ESP_OK) goto error;
-
-	err = nvs_set_u8(nvsHandle, "flip_display", config.displayFlipped ? 1 : 0);
-	if (err != ESP_OK) goto error;
-
-	err = nvs_set_u8(nvsHandle, "brightness", config.brightness);
-	if (err != ESP_OK) goto error;
-
-	err = nvs_set_str(nvsHandle, "custom_text", config.customText);
-	if (err != ESP_OK) goto error;
-
-	err = nvs_set_str(nvsHandle, "api_key", config.weatherApiKey);
+	err = nvs_set_u32(nvsHandle, "read_interval", config.readIntervalMs);
 	if (err != ESP_OK) goto error;
 
 	err = nvs_commit(nvsHandle);
 	if (err != ESP_OK) goto error;
 
 	nvs_close(nvsHandle);
-	ESP_LOGI(TAG, "Display config saved successfully");
+	ESP_LOGI(TAG, "Config saved (air=%u, water=%u, interval=%lu ms)",
+	         config.airValue, config.waterValue, (unsigned long)config.readIntervalMs);
 	return true;
 
 error:
@@ -63,7 +48,7 @@ error:
 	return false;
 }
 
-bool ConfigManager::loadConfig(DisplayConfig& config)
+bool ConfigManager::loadConfig(MoistureConfig& config)
 {
 	nvs_handle_t nvsHandle;
 	esp_err_t err;
@@ -71,59 +56,30 @@ bool ConfigManager::loadConfig(DisplayConfig& config)
 	err = nvs_open("storage", NVS_READONLY, &nvsHandle);
 	if (err != ESP_OK)
 	{
-		ESP_LOGW(TAG, "Error opening NVS handle, using defaults: %s", esp_err_to_name(err));
+		ESP_LOGW(TAG, "Error opening NVS, using defaults: %s", esp_err_to_name(err));
 		getDefaultConfig(config);
 		return false;
 	}
 
-	uint8_t val;
-	err = nvs_get_u8(nvsHandle, "show_clock", &val);
-	config.showClock = (err == ESP_OK) ? (val != 0) : true;
+	uint16_t u16val;
+	uint32_t u32val;
 
-	err = nvs_get_u8(nvsHandle, "show_weather", &val);
-	config.showWeather = (err == ESP_OK) ? (val != 0) : false;
+	err = nvs_get_u16(nvsHandle, "air_value", &u16val);
+	config.airValue = (err == ESP_OK) ? u16val : 3000;
 
-	err = nvs_get_u8(nvsHandle, "show_sw", &val);
-	config.showStarWarsQuotes = (err == ESP_OK) ? (val != 0) : false;
+	err = nvs_get_u16(nvsHandle, "water_value", &u16val);
+	config.waterValue = (err == ESP_OK) ? u16val : 1500;
 
-	err = nvs_get_u8(nvsHandle, "show_lotr", &val);
-	config.showLOTRQuotes = (err == ESP_OK) ? (val != 0) : false;
-
-	err = nvs_get_u8(nvsHandle, "flip_display", &val);
-	config.displayFlipped = (err == ESP_OK) ? (val != 0) : false;
-
-	err = nvs_get_u8(nvsHandle, "brightness", &val);
-	config.brightness = (err == ESP_OK) ? val : 8;
-
-	size_t textLen = sizeof(config.customText);
-	err = nvs_get_str(nvsHandle, "custom_text", config.customText, &textLen);
-	if (err != ESP_OK)
-	{
-		config.customText[0] = '\0';
-	}
-
-	size_t apiKeyLen = sizeof(config.weatherApiKey);
-	err = nvs_get_str(nvsHandle, "api_key", config.weatherApiKey, &apiKeyLen);
-	if (err != ESP_OK)
-	{
-		// Fallback to Kconfig value if not in NVS
-		strncpy(config.weatherApiKey, CONFIG_OPENWEATHER_API_KEY, sizeof(config.weatherApiKey) - 1);
-		config.weatherApiKey[sizeof(config.weatherApiKey) - 1] = '\0';
-	}
+	err = nvs_get_u32(nvsHandle, "read_interval", &u32val);
+	config.readIntervalMs = (err == ESP_OK) ? u32val : 2000;
 
 	nvs_close(nvsHandle);
 	return true;
 }
 
-void ConfigManager::getDefaultConfig(DisplayConfig& config)
+void ConfigManager::getDefaultConfig(MoistureConfig& config)
 {
-	config.showClock = true;
-	config.showWeather = false;
-	config.showStarWarsQuotes = false;
-	config.showLOTRQuotes = false;
-	config.displayFlipped = false;
-	config.brightness = 8;
-	config.customText[0] = '\0';
-	strncpy(config.weatherApiKey, CONFIG_OPENWEATHER_API_KEY, sizeof(config.weatherApiKey) - 1);
-	config.weatherApiKey[sizeof(config.weatherApiKey) - 1] = '\0';
+	config.airValue = 3000;
+	config.waterValue = 1500;
+	config.readIntervalMs = 2000;
 }

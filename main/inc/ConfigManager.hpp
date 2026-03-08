@@ -1,9 +1,8 @@
 /**
  * @file ConfigManager.hpp
- * @brief Display configuration management and persistence
+ * @brief Moisture sensor configuration management and persistence
  *
- * Manages user preferences for what content to display on the LED matrix,
- * including clock, weather, quotes, and custom text. Configuration is
+ * Manages calibration values and sensor settings. Configuration is
  * stored in NVS for persistence across reboots.
  */
 
@@ -12,65 +11,25 @@
 #include <cstdint>
 
 /**
- * @struct DisplayConfig
- * @brief Configuration for display content modes
- *
- * Defines which content modes are enabled. The display cycles through
- * all enabled modes every 10 seconds.
+ * @struct MoistureConfig
+ * @brief Configuration for the soil moisture sensor
  */
-struct DisplayConfig
+struct MoistureConfig
 {
-	bool showClock;            ///< Display current time
-	bool showWeather;          ///< Display weather information
-	bool showStarWarsQuotes;   ///< Display Star Wars quotes
-	bool showLOTRQuotes;       ///< Display Lord of the Rings quotes
-	bool displayFlipped;       ///< Flip display 180 degrees for upside-down mounting
-	uint8_t brightness;        ///< Display brightness (0-15, default 8)
-	char customText[256];      ///< Custom user-defined text to scroll
-	char weatherApiKey[64];    ///< OpenWeather API key
+	uint16_t airValue;         ///< ADC reading in dry air (0% moisture calibration)
+	uint16_t waterValue;       ///< ADC reading in water (100% moisture calibration)
+	uint32_t readIntervalMs;   ///< Sensor read interval in milliseconds
 };
 
 /**
  * @class ConfigManager
- * @brief Manages display configuration storage and retrieval
- *
- * Provides methods to save and load display preferences to/from NVS.
- * Configuration persists across device reboots.
+ * @brief Manages sensor configuration storage and retrieval
  */
 class ConfigManager
 {
 public:
-	/**
-	 * @brief Initialize configuration manager
-	 *
-	 * Currently a placeholder as NVS is initialized by WifiManager.
-	 */
 	static void init();
-
-	/**
-	 * @brief Save display configuration to NVS
-	 *
-	 * @param config Configuration to save
-	 * @return true if saved successfully, false on error
-	 */
-	static bool saveConfig(const DisplayConfig& config);
-
-	/**
-	 * @brief Load display configuration from NVS
-	 *
-	 * If no configuration exists in NVS, loads default configuration.
-	 *
-	 * @param config Output parameter for loaded configuration
-	 * @return true if loaded from NVS, false if using defaults
-	 */
-	static bool loadConfig(DisplayConfig& config);
-
-	/**
-	 * @brief Get default display configuration
-	 *
-	 * Default: Clock enabled, all other modes disabled.
-	 *
-	 * @param config Output parameter for default configuration
-	 */
-	static void getDefaultConfig(DisplayConfig& config);
+	static bool saveConfig(const MoistureConfig& config);
+	static bool loadConfig(MoistureConfig& config);
+	static void getDefaultConfig(MoistureConfig& config);
 };

@@ -1,6 +1,7 @@
 #include "WebServer.hpp"
 #include "WifiManager.hpp"
 #include "ConfigManager.hpp"
+#include "MoistureSensor.hpp"
 #include "esp_log.h"
 #include "esp_system.h"
 #include <string>
@@ -11,11 +12,12 @@ namespace
 	const char* TAG = "WebServer";
 	httpd_handle_t server = nullptr;
 
-	// Declare symbols created by `EMBED_FILES`
+	// Latest moisture reading, updated by main loop
+	MoistureReading latestReading = {};
+
 	extern const uint8_t index_html_start[] asm("_binary_index_html_start");
 	extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
 
-	// Handler to serve the embedded index.html at "/"
 	esp_err_t rootHandler(httpd_req_t* req)
 	{
 		size_t htmlLen = index_html_end - index_html_start;
@@ -23,21 +25,13 @@ namespace
 		return httpd_resp_send(req, reinterpret_cast<const char*>(index_html_start), htmlLen);
 	}
 
-	// Handler to get current configuration
-	esp_err_t configGetHandler(httpd_req_t* req)
+	esp_err_t moistureGetHandler(httpd_req_t* req)
 	{
-		DisplayConfig config;
-		ConfigManager::loadConfig(config);
-
 		cJSON* root = cJSON_CreateObject();
-		cJSON_AddBoolToObject(root, "showClock", config.showClock);
-		cJSON_AddBoolToObject(root, "showWeather", config.showWeather);
-		cJSON_AddBoolToObject(root, "showStarWars", config.showStarWarsQuotes);
-		cJSON_AddBoolToObject(root, "showLOTR", config.showLOTRQuotes);
-		cJSON_AddBoolToObject(root, "displayFlipped", config.displayFlipped);
-		cJSON_AddNumberToObject(root, "brightness", config.brightness);
-		cJSON_AddStringToObject(root, "customText", config.customText);
-		cJSON_AddStringToObject(root, "weatherApiKey", config.weatherApiKey);
+		cJSON_AddNumberToObject(root, "rawAdc", latestReading.rawAdc);
+		cJSON_AddNumberToObject(root, "millivolts", latestReading.millivolts);
+		cJSON_AddNumberToObject(root, "percentage", latestReading.percentage);
+		cJSON_AddStringToObject(root, "status", getMoistureStatus(latestReading.percentage));
 
 		char* jsonStr = cJSON_Print(root);
 		httpd_resp_set_type(req, "application/json");
@@ -48,10 +42,28 @@ namespace
 		return ESP_OK;
 	}
 
-	// Handler to save configuration
+	esp_err_t configGetHandler(httpd_req_t* req)
+	{
+		MoistureConfig config;
+		ConfigManager::loadConfig(config);
+
+		cJSON* root = cJSON_CreateObject();
+		cJSON_AddNumberToObject(root, "airValue", config.airValue);
+		cJSON_AddNumberToObject(root, "waterValue", config.waterValue);
+		cJSON_AddNumberToObject(root, "readIntervalMs", config.readIntervalMs);
+
+		char* jsonStr = cJSON_Print(root);
+		httpd_resp_set_type(req, "application/json");
+		httpd_resp_send(req, jsonStr, strlen(jsonStr));
+
+		free(jsonStr);
+		cJSON_Delete(root);
+		return ESP_OK;
+	}
+
 	esp_err_t configPostHandler(httpd_req_t* req)
 	{
-		char buf[512];
+		char buf[256];
 		int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
 		if (ret <= 0)
 		{
@@ -70,44 +82,25 @@ namespace
 			return ESP_FAIL;
 		}
 
-		DisplayConfig config;
+		MoistureConfig config;
 		ConfigManager::loadConfig(config);
 
-		cJSON* item = cJSON_GetObjectItem(root, "showClock");
-		if (item) config.showClock = cJSON_IsTrue(item);
-
-		item = cJSON_GetObjectItem(root, "showWeather");
-		if (item) config.showWeather = cJSON_IsTrue(item);
-
-		item = cJSON_GetObjectItem(root, "showStarWars");
-		if (item) config.showStarWarsQuotes = cJSON_IsTrue(item);
-
-		item = cJSON_GetObjectItem(root, "showLOTR");
-		if (item) config.showLOTRQuotes = cJSON_IsTrue(item);
-
-		item = cJSON_GetObjectItem(root, "displayFlipped");
-		if (item) config.displayFlipped = cJSON_IsTrue(item);
-
-		item = cJSON_GetObjectItem(root, "brightness");
+		cJSON* item = cJSON_GetObjectItem(root, "airValue");
 		if (item && cJSON_IsNumber(item))
 		{
-			int brightness = item->valueint;
-			if (brightness < 0) brightness = 0;
-			if (brightness > 15) brightness = 15;
-			config.brightness = brightness;
+			config.airValue = static_cast<uint16_t>(item->valueint);
 		}
 
-		item = cJSON_GetObjectItem(root, "customText");
-		if (item && cJSON_IsString(item))
+		item = cJSON_GetObjectItem(root, "waterValue");
+		if (item && cJSON_IsNumber(item))
 		{
-			strncpy(config.customText, item->valuestring, sizeof(config.customText) - 1);
+			config.waterValue = static_cast<uint16_t>(item->valueint);
 		}
 
-		item = cJSON_GetObjectItem(root, "weatherApiKey");
-		if (item && cJSON_IsString(item))
+		item = cJSON_GetObjectItem(root, "readIntervalMs");
+		if (item && cJSON_IsNumber(item))
 		{
-			strncpy(config.weatherApiKey, item->valuestring, sizeof(config.weatherApiKey) - 1);
-			config.weatherApiKey[sizeof(config.weatherApiKey) - 1] = '\0';
+			config.readIntervalMs = static_cast<uint32_t>(item->valueint);
 		}
 
 		ConfigManager::saveConfig(config);
@@ -117,7 +110,6 @@ namespace
 		return ESP_OK;
 	}
 
-	// Handler to save WiFi configuration
 	esp_err_t wifiConfigHandler(httpd_req_t* req)
 	{
 		char buf[256];
@@ -148,7 +140,6 @@ namespace
 			httpd_resp_send(req, "OK - Rebooting...", 18);
 			cJSON_Delete(root);
 
-			// Reboot after 2 seconds
 			vTaskDelay(2000 / portTICK_PERIOD_MS);
 			esp_restart();
 			return ESP_OK;
@@ -158,6 +149,11 @@ namespace
 		httpd_resp_send_500(req);
 		return ESP_FAIL;
 	}
+}
+
+void WebServer::updateMoistureReading(const MoistureReading& reading)
+{
+	latestReading = reading;
 }
 
 void WebServer::start()
@@ -171,6 +167,13 @@ void WebServer::start()
 			.uri      = "/",
 			.method   = HTTP_GET,
 			.handler  = rootHandler,
+			.user_ctx = nullptr,
+		};
+
+		httpd_uri_t moistureUri = {
+			.uri      = "/api/moisture",
+			.method   = HTTP_GET,
+			.handler  = moistureGetHandler,
 			.user_ctx = nullptr,
 		};
 
@@ -196,6 +199,7 @@ void WebServer::start()
 		};
 
 		httpd_register_uri_handler(server, &rootUri);
+		httpd_register_uri_handler(server, &moistureUri);
 		httpd_register_uri_handler(server, &configGetUri);
 		httpd_register_uri_handler(server, &configPostUri);
 		httpd_register_uri_handler(server, &wifiConfigUri);

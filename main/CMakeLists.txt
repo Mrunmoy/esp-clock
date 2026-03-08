@@ -2,13 +2,7 @@ set(SRCS
     "src/WifiManager.cpp"
     "src/WebServer.cpp"
     "src/ConfigManager.cpp"
-    "src/TimeSync.cpp"
-    "src/WeatherFetcher.cpp"
-    "src/Quotes.cpp"
-    "src/MAX7219.cpp"
-    "src/Font5x7.cpp"
-    "src/DisplayManager.cpp"
-    "src/DisplayController.cpp"
+    "src/MoistureSensor.cpp"
     "main.cpp"
 )
 
@@ -19,12 +13,11 @@ idf_component_register(
     PRIV_REQUIRES
         esp_wifi
         esp_http_server
-        esp_http_client
         nvs_flash
         driver
         esp_netif
         esp_event
         esp_timer
         json
-        lwip
+        esp_adc
 )
