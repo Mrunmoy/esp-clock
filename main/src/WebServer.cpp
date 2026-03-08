@@ -3,8 +3,14 @@
 #include "ConfigManager.hpp"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "freertos/FreeRTOS.h"
 #include <string>
 #include <cJSON.h>
+
+// ---------------------------------------------------------------------------
+// Static member definitions
+// ---------------------------------------------------------------------------
+WebServer::MoistureObserver WebServer::s_moistureObserver;
 
 namespace
 {
@@ -21,6 +27,24 @@ namespace
 		size_t htmlLen = index_html_end - index_html_start;
 		httpd_resp_set_type(req, "text/html");
 		return httpd_resp_send(req, reinterpret_cast<const char*>(index_html_start), htmlLen);
+	}
+
+	// Handler to serve the latest pushed moisture reading
+	esp_err_t moistureGetHandler(httpd_req_t* req)
+	{
+		MoistureReading snapshot = WebServer::getLastMoistureReading();
+
+		cJSON* root = cJSON_CreateObject();
+		cJSON_AddNumberToObject(root, "moisture", static_cast<double>(snapshot.moisture));
+		cJSON_AddBoolToObject(root, "valid", snapshot.valid);
+
+		char* jsonStr = cJSON_Print(root);
+		httpd_resp_set_type(req, "application/json");
+		httpd_resp_send(req, jsonStr, strlen(jsonStr));
+
+		free(jsonStr);
+		cJSON_Delete(root);
+		return ESP_OK;
 	}
 
 	// Handler to get current configuration
@@ -162,6 +186,8 @@ namespace
 
 void WebServer::start()
 {
+	s_moistureObserver.init();
+
 	httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 	config.uri_match_fn = httpd_uri_match_wildcard;
 
@@ -195,10 +221,18 @@ void WebServer::start()
 			.user_ctx = nullptr,
 		};
 
+		httpd_uri_t moistureGetUri = {
+			.uri      = "/api/moisture",
+			.method   = HTTP_GET,
+			.handler  = moistureGetHandler,
+			.user_ctx = nullptr,
+		};
+
 		httpd_register_uri_handler(server, &rootUri);
 		httpd_register_uri_handler(server, &configGetUri);
 		httpd_register_uri_handler(server, &configPostUri);
 		httpd_register_uri_handler(server, &wifiConfigUri);
+		httpd_register_uri_handler(server, &moistureGetUri);
 
 		ESP_LOGI(TAG, "Web server started");
 	}
@@ -215,4 +249,46 @@ void WebServer::stop()
 		httpd_stop(server);
 		server = nullptr;
 	}
+}
+
+// ---------------------------------------------------------------------------
+// MoistureObserver — all sensor state lives here, no file-scope globals
+// ---------------------------------------------------------------------------
+
+void WebServer::MoistureObserver::init()
+{
+	if (!m_mutex)
+	{
+		m_mutex = xSemaphoreCreateMutex();
+	}
+}
+
+void WebServer::MoistureObserver::onMoistureReading(const MoistureReading& reading)
+{
+	if (m_mutex && xSemaphoreTake(m_mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+	{
+		m_lastReading = reading;
+		xSemaphoreGive(m_mutex);
+	}
+}
+
+MoistureReading WebServer::MoistureObserver::getLastReading()
+{
+	MoistureReading snapshot{0.0f, false};
+	if (m_mutex && xSemaphoreTake(m_mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+	{
+		snapshot = m_lastReading;
+		xSemaphoreGive(m_mutex);
+	}
+	return snapshot;
+}
+
+ISensorObserver* WebServer::getMoistureObserver()
+{
+	return &s_moistureObserver;
+}
+
+MoistureReading WebServer::getLastMoistureReading()
+{
+	return s_moistureObserver.getLastReading();
 }

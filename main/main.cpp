@@ -12,6 +12,7 @@
 #include "MAX7219.hpp"
 #include "DisplayManager.hpp"
 #include "DisplayController.hpp"
+#include "MoistureSensor.hpp"
 
 static const char* TAG = "main";
 
@@ -55,8 +56,19 @@ extern "C" void app_main(void)
 		WifiManager::startConfigAP();
 	}
 
-	// Start web server
+	// ---------------------------------------------------------------------------
+	// Configure the moisture sensor and register the web server as an observer.
+	// The sensor task will push readings to WebServer without WebServer ever
+	// needing to poll the sensor — clean separation of concerns.
+	// ---------------------------------------------------------------------------
+	static MoistureSensor moistureSensor;
+	moistureSensor.addObserver(WebServer::getMoistureObserver());
+
+	// Start web server (must come after observer registration)
 	WebServer::start();
+
+	// Start sensor task (readings will be pushed to the webserver observer)
+	moistureSensor.start();
 
 	// Initialize MAX7219 display
 	MAX7219 display(5);  // 5 devices in series
